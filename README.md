@@ -1,3 +1,5 @@
+![](https://i.loli.net/2019/01/07/5c331af49473e.png)
+
 # 学习 zabbix4.0
 
 ⚠️ [中文文档地址](https://www.zabbix.com/documentation/4.0/zh/manual) 不过翻译滞后了，更新的比较慢 [英文文档地址](https://www.zabbix.com/documentation/4.0/manual)比较好点
@@ -716,3 +718,269 @@ shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf -R log_level_decrease="h
 
 ### [Java gateway](https://www.zabbix.com/documentation/4.0/manual/concepts/java)
 
+#### 概述
+
+-   为了在特定主机上找到 JMX 计数器的值，Zabbix server 向 Zabbix Java gateway 发送请求，后者使用 JMX 管理 API 来远程查询相关的应用。该应用不需要安装额外的软件。只需要在启动时，命令行添加 `-Dcom.sun.management.jmxremote` 选项即可。
+
+-   Java gateway 接受来自 Zabbix server 或 Zabbix proxy 的传入连接，并且只能用作“被动 proxy”。与 Zabbix proxy 相反，它也可以从 Zabbix proxy （Zabbix proxy 不能被链接）调用。在 Zabbix server 或 Zabbix proxy 配置文件中，可以直接配置每个 Java gateway 的访问，因此每个 Zabbix server 或 Zabbix proxy 只能配置**一个** Java gateway。如果主机将有 JMX agent 或其他类型的监控项，则只将 JMX agent 监控项传递给 Java gateway 进行检索。
+
+-   当必须通过 Java gateway 更新监控项时，Zabbix server 或 proxy 将连接到 Java gateway 并请求该值，Java gateway 将检索该值并将其传递回 Zabbix server 或 Zabbix proxy。 因此，Java gateway **不会**缓存任何值。
+
+-   Zabbix server 或 Zabbix proxy 具有连接到 Java gateway 的特定类型的进程，由 StartJavaPollers 选项控制。在内部，Java gateway 启动多个线程，由 START_POLLERS 选项控制。 在服务器端，如果连接超过 Timeout 选项配置的秒数，它将被终止，但 Java gateway 可能仍在忙于从 JMX 计数器检索值。 为了解决这个问题，从 Zabbix 2.0.15、Zabbix 2.2.10 和 Zabbix 2.4.5 开始，Java gateway 中有 TIMEOUT 选项，允许为 JMX 网络操作设置超时。
+
+-   Zabbix server 或 proxy 尝试尽可能地将请求汇集到单个 JMX 目标（受监控项取值间隔影响），并在单个连接中将它们发送到 Java Gateway 以获得更好的性能。
+
+-   此外，建议让 StartJavaPollers 选项的值小于或等于 START_POLLERS，否则可能会出现 Java gateway 中没有可用线程来为传入请求提供服务的情况。
+
+#### Getting Java gateway
+
+-   You can install Java gateway either from the sources or packages downloaded from Zabbix website.
+
+-   Using the links below you can access information how to get and run Zabbix Java gateway, how to configure Zabbix server (or Zabbix proxy) to use Zabbix Java gateway for JMX monitoring, and how to configure Zabbix items in Zabbix frontend that correspond to particular JMX counters. 
+
+<table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0">Installation from </th><th class="col1">Instructions </th><th class="col2">Instructions </th>
+	</tr>
+	</thead>
+	<tbody><tr class="row1">
+		<td class="col0 leftalign"><em>Sources</em>  </td><td class="col1 leftalign"><a href="/documentation/4.0/manual/installation/install#installing_java_gateway" class="wikilink1" title="manual:installation:install">Installation</a>  </td><td class="col2 leftalign"><a href="/documentation/4.0/manual/concepts/java/from_sources" class="wikilink1" title="manual:concepts:java:from_sources">Setup</a>  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>RHEL/CentOS packages</em>  </td><td class="col1 leftalign"><a href="/documentation/4.0/manual/installation/install_from_packages/rhel_centos#java_gateway_installation" class="wikilink1" title="manual:installation:install_from_packages:rhel_centos">Installation</a>  </td><td class="col2 leftalign"><a href="/documentation/4.0/manual/concepts/java/from_rhel_centos" class="wikilink1" title="manual:concepts:java:from_rhel_centos">Setup</a>  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"><em>Debian/Ubuntu packages</em>  </td><td class="col1 leftalign"><a href="/documentation/4.0/manual/installation/install_from_packages/debian_ubuntu#java_gateway_installation" class="wikilink1" title="manual:installation:install_from_packages:debian_ubuntu">Installation</a>  </td><td class="col2 leftalign"><a href="/documentation/4.0/manual/concepts/java/from_debian_ubuntu" class="wikilink1" title="manual:concepts:java:from_debian_ubuntu">Setup</a>  </td>
+	</tr>
+</tbody></table>
+
+### [Sender](https://www.zabbix.com/documentation/4.0/manual/concepts/sender)
+
+#### 概述
+
+-   Zabbix sender 是一个命令行应用程序，可用于将性能数据发送到 Zabbix server 进行处理。
+
+-   该实用程序通常用于长时间运行的用户脚本，用于定期发送可用性和性能数据。
+
+-   要将结果直接发送到 Zabbix server 或 proxy，必须配置 [trapper 监控项](https://www.zabbix.com/documentation/4.0/manual/config/items/itemtypes/trapper) 类型。
+
+#### 运行 Zabbix sender
+
+```sh
+# example
+
+shell> cd bin
+shell> ./zabbix_sender -z zabbix -s "Linux DB3" -k db.connections -o 43
+```
+
+-   z - Zabbix server 主机（也可以使用 IP 地址）
+-   s - 被监控主机的名称（在前端注册）
+-   k - 监控项键值
+-   o - 要发送的值
+
+-   Zabbix sender 接受 UTF-8 编码的字符串（对于类 UNIX 系统和 Windows ），且在文件中没有字节顺序标记（BOM）。
+
+> BOM（Byte Order Mark），字节顺序标记，出现在文本文件头部，Unicode编码标准中用于标识文件是采用哪种格式的编码。
+
+-  Zabbix sender 同样可以在 Windows 上运行：
+
+`zabbix_sender.exe [options]`
+
+-   从 Zabbix 1.8.4 开始，zabbix_sender 实时发送方案已得到改进，可以连续接收多个传递给它的值，并通过单个连接将它们发送到服务器。 两个不超过0.2秒的值可以放在同一堆栈中，但最大 pooling 时间仍然是1秒。
+
+⚠️ Zabbix sender 如果指定的配置文件中存在无效（不遵循 parameter=value 注释）的参数条目，则 Zabbix sender 将终止。
+
+### [Get](https://www.zabbix.com/documentation/4.0/manual/concepts/get)
+
+#### 概述
+
+-   Zabbix get 是一个命令行应用，它可以用于与 Zabbix agent 进行通信，并从 Zabbix agent 那里获取所需的信息。(通常被用于 Zabbix agent **故障排错**。)
+
+#### 运行 Zabbix get
+
+[`Zabbix get 手册`](https://www.zabbix.com/documentation/4.0/manpages/zabbix_get)
+
+一个在 UNIX 下运行 Zabbix get 以从 Zabbix agent 获取 processor load 的值的例子。
+
+```sh
+shell> cd bin
+shell> ./zabbix_get -s 127.0.0.1 -p 10050 -k system.cpu.load[all,avg1]
+```
+
+> 命令行参数：
+
+-   -s --host <host name or IP>      指定目标主机名或IP地址
+-   -p --port <port number>          指定主机上运行 Zabbix agent 的端口号。默认端口10050
+-   -I --source-address <IP address> 指定源 IP 地址
+-   -k --key <item key>              指定要从监控项键值检索的值
+-   -h --help                        获得帮助
+-   -V --version                     显示版本号
+
+> Zabbix get 同样可以在 Windows 上运行：
+
+`zabbix_get.exe [options]`
+
+## [Installation](https://www.zabbix.com/documentation/4.0/manual/installation)
+
+### [获取 Zabbix](https://www.zabbix.com/documentation/4.0/manual/installation/getting_zabbix)
+
+### [安装要求](https://www.zabbix.com/documentation/4.0/manual/installation/requirements)
+
+#### Zabbix 系统所需磁盘空间
+
+<table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0">参数</th><th class="col1">所需磁盘空间的计算公式 （单位：字节）</th>
+	</tr>
+	</thead>
+	<tbody><tr class="row1">
+		<td class="col0 leftalign"><em>Zabbix 配置文件</em>  </td><td class="col1">固定大小。通常为 10MB 或更少。</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>History</em>  </td><td class="col1">days*(items/refresh rate)*24*3600*bytes<br>
+items：监控项数量。<br>
+days：保留历史数据的天数。<br>
+refresh rate：监控项的更新间隔。<br>
+bytes：保留单个值所需要占用的字节数，依赖于数据库引擎，通常为 ~90 字节。 </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"><em>Trends</em>  </td><td class="col1 leftalign">days*(items/3600)*24*3600*bytes<br>
+items：监控项数量。<br>
+days：保留历史数据的天数。<br>
+bytes：保留单个趋势数据所需要占用的字节数，依赖于数据库引擎，通常为 ~90 字节。  </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"><em>Events</em>  </td><td class="col1">days*events*24*3600*bytes<br>
+events：每秒产生的事件数量。假设最糟糕的情况下，每秒产生 1 个事件。<br>
+days：保留历史数据的天数。<br>
+bytes：保留单个趋势数据所需的字节数，取决于数据库引擎，通常为 ~170 字节。</td>
+	</tr>
+</tbody></table>
+
+### [安全设置 Zabbix 的最佳实践](https://www.zabbix.com/documentation/4.0/manual/installation/requirements/best_practices)
+
+#### 概述
+
+-   Zabbix 的功能不依赖于此处的实践。但建议使用它们以提高系统的安全性。
+
+#### Zabbix agent 的安全用户
+
+-   在默认的配置中，Zabbix server 和 Zabbix agent 进程共享一个“zabbix”用户。 如果您希望确保 Zabbix agent 无法访问 Zabbix server 配置中的敏感详细信息（例如，数据库登录信息），则应以不同的用户身份运行 Zabbix agent：
+
+    -   创建一个安全用户；
+    
+    -   在 Zabbix agent 的 [配置文件](https://www.zabbix.com/documentation/4.0/manual/appendix/config/zabbix_agentd) 中指定此用户（修改 'User' parameter）；
+    
+    -   以拥有管理员权限的用户重启 Zabbix agent。之后，此权限将赋予给先前指定的用户。
+
+-   UTF-8 encoding
+
+    UTF-8 is the only encoding supported by 
+    Zabbix. 
+
+-   Setting up SSL for Zabbix frontend
+
+    On RHEL/Centos, install mod_ssl package:
+
+    `yum install mod_ssl`
+
+    Create directory for SSL keys:
+
+    ```sh
+    mkdir -p /etc/httpd/ssl/private
+    chmod 700 /etc/httpd/ssl/private
+    Create SSL certificate:
+    ```
+
+    `openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/httpd/ssl/private/apache-selfsigned.key -out /etc/httpd/ssl/apache-selfsigned.crt`
+
+    下面提示内容适当填写。 最重要的一行是请求 Common Name 的行。 您需要输入要与服务器关联的域名。 如果您没有域名，则可以输入公共IP地址。 下面将使用 example.com。
+
+    ```
+    Country Name (两个字母) [XX]:
+    State or Province Name (全名) []:
+    Locality Name (eg, city) [默认的城市]:
+    Organization Name (eg, company) [默认的公司名]:
+    Organizational Unit Name (eg, section) []:
+    Common Name (eg, your name or your server's hostname) []:example.com
+    Email Address []:
+    ```
+
+    `/etc/httpd/conf.d/ssl.conf`
+
+    ```sh
+    DocumentRoot "/usr/share/zabbix"
+    ServerName example.com:443
+    SSLCertificateFile /etc/httpd/ssl/apache-selfsigned.crt
+    SSLCertificateKeyFile /etc/httpd/ssl/private/apache-selfsigned.key
+    ```
+
+    Restart the Apache service to apply the changes:
+
+    `systemctl restart httpd.service`
+
+-   在 URL 的根目录上启用 Zabbix
+
+    将虚拟主机添加到 Apache 配置，并将文档根目录的永久重定向设置为 Zabbix SSL URL。 不要忘记将 example.com 替换为服务器的实际名称。
+
+    `/etc/httpd/conf/httpd.conf`
+
+    ```sh
+    #Add lines
+
+    <VirtualHost *:*>
+        ServerName example.com
+        Redirect permanent / http://example.com
+    </VirtualHost>
+    ```
+
+    重启 Apache 服务使以上修改的配置生效：
+
+    `systemctl restart httpd.service`
+
+-   Enabling HTTP Strict Transport Security (HSTS) on web server
+
+    HSTS（HTTP Strict Transport Security）的作用是强制客户端（如浏览器）使用HTTPS与服务器创建连接。
+
+    For example, to enable HSTS policy for your Zabbix frontend in Apache configuration:
+
+    `/etc/httpd/conf/httpd.conf`
+    
+    add the following directive to your virtual host's configuration:
+
+    ```sh
+    <VirtualHost *:443>
+    Header set Strict-Transport-Security "max-age=31536000"
+    </VirtualHost>
+    ```
+
+    Restart the Apache service to apply the changes:
+
+    `systemctl restart httpd.service`
+
+-   禁用曝光的 Web 服务器信息
+
+    可以通过向 Apache（用作示例）配置文件添加两行来禁用签名：
+
+    ```    
+    ServerSignature Off
+    ServerTokens Prod
+    ```
+
+    可以通过更改 php.ini 配置文件来禁用 PHP 签名（X-Powered-By HTTP header）（默认情况下禁用签名）：
+
+    `expose_php = Off`
+
+### [从容器中安装](https://www.zabbix.com/documentation/4.0/manual/installation/containers)
+
+#### Docker
+
+[Github 仓库地址](https://github.com/zabbix/zabbix-docker)
+
+### [升级](https://www.zabbix.com/documentation/4.0/manual/installation/upgrade)
+
+## [快速入门](https://www.zabbix.com/documentation/4.0/manual/quickstart)
+
+### [登陆和配置用户](https://www.zabbix.com/documentation/4.0/manual/quickstart/login)

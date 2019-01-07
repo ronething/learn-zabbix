@@ -244,3 +244,329 @@
 
 ### [Server](https://www.zabbix.com/documentation/4.0/manual/concepts/server)
 
+#### 概述
+
+-   基本的 Zabbix Server 的功能分解成为三个不同的组件。他们是：Zabbix server、Web前端和数据库。
+
+-   Zabbix Server 负责执行数据的主动轮询和被动获取，计算触发器条件，向用户发送通知。它是 Zabbix Agent 和 Proxy 报告系统可用性和完整性数据的核心组件。Server 自身可以通过简单服务远程检查网络服务（如Web服务器和邮件服务器）。Zabbix Server是所有配置、统计和操作数据的中央存储中心，也是Zabbix监控系统的告警中心。在监控的系统中出现任何异常，将被发出通知给管理员。
+
+-   Zabbix 的所有配置信息都存储在 Server 和Web前端进行交互的数据库中。例如，当你通过Web前端（或者API）新增一个监控项时，它会被添加到数据库的监控项表里。然后，Zabbix server 以每分钟一次的频率查询监控项表中的有效项，接着将它存储在 Zabbix server 中的缓存里。这就是为什么 Zabbix 前端所做的任何更改需要花费两分钟左右才能显示在最新的数据段的原因。
+
+#### Running server
+
+##### 通过二进制包安装的组件
+
+> Zabbix server 进程以守护进程（Deamon）运行。Zabbix server 的启动可以通过执行以下命令来完成：
+
+```sh
+shell> service zabbix-server start
+
+or
+
+shell> /etc/init.d/zabbix-server start
+
+# 类似的，停止、重启、查看状态，则需要执行以下命令：
+shell> service zabbix-server stop
+shell> service zabbix-server restart
+shell> service zabbix-server status
+```
+
+##### 手动启动
+
+```sh
+# 如果以上操作均无效，您可能需要手动启动，找到 Zabbix Server 二进制文件的路径并且执行：
+shell> zabbix_server
+
+# 可以将以下命令行参数用于 Zabbix server
+-c --config <file>              配置文件路径（默认的是 /usr/local/etc/zabbix_server.conf）
+-R --runtime-control <option>   执行管理功能
+-h --help                       帮助
+-V --version                    显示版本号
+
+# 示例
+shell> zabbix_server -c /usr/local/etc/zabbix_server.conf
+shell> zabbix_server --help
+shell> zabbix_server -V
+```
+
+##### 运行时控制
+
+<table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0">Option</th><th class="col1">Description</th><th class="col2">Target</th>
+	</tr>
+	</thead>
+	<tbody><tr class="row1">
+		<td class="col0">config_cache_reload</td><td class="col1">Reload configuration cache. Ignored if cache is being currently loaded.</td><td class="col2"> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0">housekeeper_execute</td><td class="col1">Start the housekeeping procedure. Ignored if the housekeeping procedure is currently in progress.</td><td class="col2"> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0">log_level_increase[=&lt;<strong>target</strong>&gt;]</td><td class="col1">Increase log level, affects all processes if target is not specified.</td><td class="col2" rowspan="2"><strong>process type</strong> - All processes of specified type (e.g., poller)<br>
+See all <a href="#server_process_types" title="manual:concepts:server ↵" class="wikilink1">server process types</a>.<br>
+<strong>process type,N</strong> - Process type and number (e.g., poller,3)<br>
+<strong>pid</strong> - Process identifier (1 to 65535). For larger values specify target as 'process type,N'.</td>
+	</tr>
+	<tr class="row4">
+		<td class="col0">log_level_decrease[=&lt;<strong>target</strong>&gt;]</td><td class="col1">Decrease log level, affects all processes if target is not specified.</td>
+	</tr>
+</tbody></table>
+
+例如，使用 config_cache_reload 选项重新加载 server 的配置缓存：
+
+```sh
+shell> zabbix_server -c /usr/local/etc/zabbix_server.conf -R config_cache_reload
+```
+
+例如，使用 housekeeper_execute 选项来触发管家服务执行：
+
+```sh
+shell> zabbix_server -c /usr/local/etc/zabbix_server.conf -R housekeeper_execute
+```
+
+增加所有进程的日志级别：
+
+```sh
+shell> zabbix_server -c /usr/local/etc/zabbix_server.conf -R log_level_increase
+```
+
+增加第二个 Poller 进程的日志级别：
+
+```sh
+shell> zabbix_server -c /usr/local/etc/zabbix_server.conf -R log_level_increase=poller,2
+```
+
+增加 PID 为 1234 进程的日志级别：
+
+```sh
+shell> zabbix_server -c /usr/local/etc/zabbix_server.conf -R log_level_increase=1234
+```
+
+降低 `http poller` 进程的日志级别：
+
+```sh
+shell> zabbix_server -c /usr/local/etc/zabbix_server.conf -R log_level_decrease="http poller"
+```
+
+##### 进程用户
+
+Zabbix server 允许使用非 root 用户运行。它将以任何非 root 用户的身份运行。因此，使用非 root 用户运行 server 是没有任何问题的.
+
+如果你试图以“root”身份运行它，它将会切换到一个已经“写死”的“zabbix”用户，您可以参考 安装 章节。按此相应地修改 Zabbix server 配置文件中的“AllowRoot”参数，则可以只以“root”身份运行 Zabbix server。
+
+如果 Zabbix server 和 agent 均运行在同一台服务器上，建议您使用不同的用户运行 server 和 agent 。否则,，如果两者都以相同的用户运行，Agent 可以访问 Server 的配置文件, 任何 Zabbix 管理员级别的用户都可以很容易地检索到 Server 的信息。例如，数据库密码。
+
+##### [配置文件](https://www.zabbix.com/documentation/4.0/manual/appendix/config/zabbix_server)
+
+##### 启动脚本
+
+这些脚本用于在系统启动和关闭期间自动启动和停止 Zabbix 进程。 此脚本位于 misc/init.d 目录下。
+
+##### 服务器进程类型
+
+-   alert manager - manager of alerter tasks
+-   alerter - process for sending notifications
+-   configuration syncer - process for managing in-memory cache of configuration data
+-   discoverer - process for discovery of devices
+-   escalator - process for escalation of actions
+-   history syncer - history DB writer
+-   housekeeper - process for removal of old historical data
+-   http poller - web monitoring poller
+-   icmp pinger - poller for icmpping checks
+-   ipmi manager - IPMI poller manager
+-   ipmi poller - poller for IPMI checks
+-   java poller - poller for Java checks
+-   poller - normal poller for passive checks
+-   preprocessing manager - manager of preprocessing tasks
+-   preprocessing worker - process for data preprocessing
+-   proxy poller - poller for passive proxies
+-   self-monitoring - process for collecting internal server statistics
+-   snmp trapper - trapper for SNMP traps
+-   task manager - process for remote execution of tasks requested by other components (e.g. close problem, acknowledge problem, check item value now, remote command functionality)
+-   timer - timer for processing maintenances
+-   trapper - trapper for active checks, traps, proxy communication
+-   unreachable poller - poller for unreachable devices
+-   vmware collector - VMware data collector responsible for data gathering from VMware services
+
+### [Agent](https://www.zabbix.com/documentation/4.0/zh/manual/concepts/agent)
+
+#### 概述
+
+-   Zabbix agent 部署在被监控目标上，以主动监控本地资源和应用程序（硬盘、内存、处理器统计信息等）。
+
+-   Zabbix agent 收集本地的操作信息并将数据报告给 Zabbix server 用于进一步处理。一旦出现异常 (例如硬盘空间已满或者有崩溃的服务进程)，Zabbix server 会主动警告管理员指定机器上的异常。
+
+-   Zabbix agents 的极高效率缘于它可以利用**本地系统调用**来完成统计数据的采集。
+
+#### 被动和主动检查
+
+-   在被动检查 模式中 agent 应答数据请求。Zabbix server（或 proxy）询求数据，例如 CPU load，然后 Zabbix agent 返还结果。
+
+-   主动检查 处理过程将相对复杂。Agent 必须首先从 Zabbix sever 索取监控项列表以进行独立处理，然后会定期发送采集到的新值给 Zabbix server。
+
+##### 通过二进制包安装的组件
+
+Zabbix agent 进程以守护进程（Deamon）运行。Zabbix agent 的启动可以通过执行以下命令来完成：
+
+```sh
+shell> service zabbix-agent start
+
+or
+
+shell> /etc/init.d/zabbix-agent start
+
+# 类似的，停止、重启、查看状态，则需要执行以下命令：
+
+shell> service zabbix-agent stop
+shell> service zabbix-agent restart
+shell> service zabbix-agent status
+```
+
+##### 手动启动
+
+```sh
+# 找到 Zabbix agent 二进制文件的路径并且执行：
+
+shell> zabbix_agentd
+```
+
+#### Windows 系统上的 Agent
+
+> Windows 系统上的 Zabbix agent 作为一个Windows服务运行。
+
+#### 其他 Agent 选项
+
+##### 命令行参数
+
+<table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"><strong>参数</strong></th><th class="col1"><strong>描述</strong></th>
+	</tr>
+	<tr class="row1">
+		<th class="col0 centeralign" colspan="2">  <strong>UNIX 和 Windows agent</strong>  </th>
+	</tr>
+	</thead>
+	<tbody><tr class="row2">
+		<td class="col0 leftalign">-c --config &lt;config-file&gt;  </td><td class="col1 leftalign">配置文件的绝对路径。<br>
+您可以使用此选项来制定配置文件，而不是使用默认文件。<br>
+在 UNIX 上，默认的配置文件是 /usr/local/etc/zabbix_agentd.conf 或 由 <a href="/documentation/4.0/manual/installation/install#installing_zabbix_daemons" class="wikilink1" title="manual:installation:install">compile-time</a> 中的 <em>--sysconfdir</em> 或  <em>--prefix</em> 变量来确定。 <br>
+在 Windows上, 默认的配置文件是 c:\zabbix_agentd.conf  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign">-p --print  </td><td class="col1">输出已知的监控项并退出。<br>
+<em>注意</em>： 要返回 <a href="/documentation/4.0/manual/config/items/userparameters" class="wikilink1" title="manual:config:items:userparameters">用户自定义参数</a> 的结果，您必须指定配置文件（如果它不在默认路径下）。 </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign">-t --test &lt;item key&gt;  </td><td class="col1">测试指定的监控项并退出。<br>
+<em>注意</em>：要返回 <a href="/documentation/4.0/manual/config/items/userparameters" class="wikilink1" title="manual:config:items:userparameters">用户自定义参数</a> 的结果，您必须指定配置文件（如果它不在默认路径下）。</td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign">-h --help  </td><td class="col1">显示帮助信息 </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign">-V --version  </td><td class="col1 leftalign">显示版本号  </td>
+	</tr>
+	<tr class="row7">
+		<th class="col0 centeralign" colspan="2">  <strong>仅 UNIX agent</strong>  </th>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign">-R --runtime-control &lt;option&gt;  </td><td class="col1 leftalign">执行管理功能。请参阅 <a href="/documentation/4.0/manual/concepts/agent#runtime_control" class="wikilink1" title="manual:concepts:agent">运行时机制的控制</a>。  </td>
+	</tr>
+	<tr class="row9">
+		<th class="col0 centeralign" colspan="2">  <strong>仅 Windows agent </strong>  </th>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign">-m --multiple-agents  </td><td class="col1">使用多 Agent 实例（使用 -i、-d、-s、-x）。<br>
+为了区分实例的服务名称，每项服务名都会包涵来自配置文件里的 Hostname 值。 </td>
+	</tr>
+	<tr class="row11">
+		<th class="col0 centeralign" colspan="2">  <strong>仅 Windows agent （功能）</strong>  </th>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign">-i --install  </td><td class="col1">以服务的形式安装 Zabbix Windows agent。</td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign">-d --uninstall  </td><td class="col1 leftalign">卸载 Zabbix indows agent 服务。  </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign">-s --start  </td><td class="col1 leftalign">启动 Zabbix Windows agent 服务。  </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign">-x --stop  </td><td class="col1 leftalign">停止 Zabbix Windows agent 服务。  </td>
+	</tr>
+</tbody></table>
+
+```sh
+# installing a “Zabbix Agent [Hostname]” service for Windows using the configuration file zabbix_agentd.conf located in the same folder as agent executable and make the service name unique by extending it by Hostname value from the config file
+
+shell> zabbix_agentd.exe -i -m -c zabbix_agentd.conf
+```
+
+##### 运行时控制
+
+<table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0">Option</th><th class="col1">Description</th><th class="col2">Target</th>
+	</tr>
+	</thead>
+	<tbody><tr class="row1">
+		<td class="col0 leftalign">log_level_increase[=&lt;target&gt;]  </td><td class="col1 leftalign">Increase log level.<br>
+If target is not specified, all processes are affected.  </td><td class="col2 leftalign" rowspan="2">Target can be specified as:<br>
+<strong>process type</strong> - all processes of specified type (e.g., listener)<br>
+See all <a href="#agent_process_types" title="manual:concepts:agent ↵" class="wikilink1">agent process types</a>.<br>
+<strong>process type,N</strong> - process type and number (e.g., listener,3)<br>
+<strong>pid</strong> - process identifier (1 to 65535). For larger values specify target as 'process-type,N'.  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign">log_level_decrease[=&lt;target&gt;]  </td><td class="col1 leftalign">Decrease log level.<br>
+If target is not specified, all processes are affected.  </td>
+	</tr>
+</tbody></table>
+
+-   给所有进程增加日志级别。
+-   给第三个监听进程增加日志级别。
+-   给 PID 号为 1234 的进程增加日志级别。
+-   给所有主动检查进程降低日志级别。
+
+```sh
+shell> zabbix_agentd -R log_level_increase
+shell> zabbix_agentd -R log_level_increase=listener,3
+shell> zabbix_agentd -R log_level_increase=1234
+shell> zabbix_agentd -R log_level_decrease="active checks"
+```
+
+#### Agent process types
+
+-   active checks - process for performing active checks
+-   collector - process for data collection
+-   listener - process for listening to passive checks
+
+#### 进程用户
+
+-   Zabbix agent 在 UNIX 上允许使用非 root 用户运行。它将以任何非 root 用户的身份运行。因此，使用非 root 用户运行 agent 是没有任何问题的.
+
+-   如果你试图以“root”身份运行它，它将会切换到一个已经“写死”的“zabbix”用户，该用户必须存在于您的系统上。如果您只想以“root”用户运行 agent，您必须在 agent 配置文件里修改‘AllowRoot‘参数。
+
+#### 配置文件 
+
+-   [zabbix_agentd](https://www.zabbix.com/documentation/4.0/manual/appendix/config/zabbix_agentd)
+-   [Windows agent](https://www.zabbix.com/documentation/4.0/manual/appendix/config/zabbix_agentd_win)
+
+#### 语言环境
+
+Zabbix agent 需要 `UTF-8` 语言环境，以便某些文本 Zabbix agent 监控项可以返回预期的内容。
+
+#### Exit code
+
+在 2.2 版之前，Zabbix agent 在成功退出时返回0，在异常时返回255。 从版本 2.2 及更高版本开始，Zabbix agent 在成功退出时返回0，在异常时返回1。
+
+### [Proxy](https://www.zabbix.com/documentation/4.0/manual/concepts/proxy)
+
+#### 概述
+
+
+

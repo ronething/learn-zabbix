@@ -568,5 +568,151 @@ Zabbix agent 需要 `UTF-8` 语言环境，以便某些文本 Zabbix agent 监�
 
 #### 概述
 
+-   Zabbix proxy 是一个可以从一个或多个受监控设备采集监控数据并将信息发送到 Zabbix server 的进程，主要是代表 Zabbix server 工作。 所有收集的数据都在本地缓存，然后传输到 proxy 所属的 Zabbix server。
 
+-   部署Zabbix proxy 是可选的，但可能非常有利于分担单个 Zabbix server 的负载。 如果只有代理采集数据，则 Zabbix server 上会减少 CPU 和磁盘 I/O 的开销。
+
+-   Zabbix proxy 是无需本地管理员即可集中监控远程位置、分支机构和网络的理想解决方案。
+
+-   Zabbix proxy 需要使用独立的数据库。⚠️ Zabbix proxy 支持 SQLite、MySQL和PostgreSQL 作为数据库。使用 Oracle 或 DB2 需要您承担一定的风险，例如，在自动发现规则中的遇到问题 [返回值](https://www.zabbix.com/documentation/4.0/manual/discovery/low_level_discovery#overview) 。
+
+#### Running proxy
+
+##### 通过二进制包安装的组件
+
+Zabbix proxy 进程以守护进程（Deamon）运行。Zabbix proxy 的启动可以通过执行以下命令来完成：
+
+```sh
+shell> service zabbix-proxy start
+
+or
+
+shell> /etc/init.d/zabbix-proxy start
+
+# 类似的，Zabbix proxy 的停止、重启、查看状态，则需要执行以下命令：
+
+shell> service zabbix-proxy stop
+shell> service zabbix-proxy restart
+shell> service zabbix-proxy status
+```
+
+##### 手动启动
+
+如果以上操作均无效，您可能需要手动启动，找到 Zabbix proxy 二进制文件的路径并且执行：
+
+```sh
+shell> zabbix_proxy
+```
+
+##### 命令行参数
+
+```sh
+-c --config <file>              配置文件路径
+-R --runtime-control <option>   执行管理功能
+-h --help                       帮助
+-V --version                    显示版本号
+```
+
+使用命令行参数运行 Zabbix proxy 的示例:：
+
+```sh
+shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf
+shell> zabbix_proxy --help
+shell> zabbix_proxy -V
+```
+
+##### 运行时控制
+
+<table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0">Option</th><th class="col1">Description</th><th class="col2">Target</th>
+	</tr>
+	</thead>
+	<tbody><tr class="row1">
+		<td class="col0">config_cache_reload</td><td class="col1">Reload configuration cache. Ignored if cache is being currently loaded.<br>
+Active Zabbix proxy will connect to the Zabbix server and request configuration data.</td><td class="col2"> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0">housekeeper_execute</td><td class="col1">Start the housekeeping procedure. Ignored if the housekeeping procedure is currently in progress.</td><td class="col2"> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0">log_level_increase[=&lt;<strong>target</strong>&gt;]</td><td class="col1">Increase log level, affects all processes if target is not specified.</td><td class="col2 leftalign" rowspan="2"><strong>process type</strong> - All processes of specified type (e.g., poller)<br>
+See all <a href="#proxy_process_types" title="manual:concepts:proxy ↵" class="wikilink1">proxy process types</a>.<br>
+<strong>process type,N</strong> - Process type and number (e.g., poller,3)<br>
+<strong>pid</strong> - Process identifier (1 to 65535). For larger values specify target as 'process type,N'.  </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0">log_level_decrease[=&lt;<strong>target</strong>&gt;]</td><td class="col1">Decrease log level, affects all processes if target is not specified.</td>
+	</tr>
+</tbody></table>
+
+例如，使用 config_cache_reload 选项重新加载 proxy 的配置缓存：
+
+```sh
+shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf -R config_cache_reload
+```
+
+例如，使用 housekeeper_execute 选项来触发管家服务执行：
+
+```
+shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf -R housekeeper_execute
+```
+
+```sh
+# 增加所有进程的日志级别：
+
+shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf -R log_level_increase
+
+# 增加第二个 Poller 进程的日志级别：
+
+shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf -R log_level_increase=poller,2
+
+# 增加 PID 为 1234 进程的日志级别：
+
+shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf -R log_level_increase=1234
+
+# 降低 http poller 进程的日志级别：
+
+shell> zabbix_proxy -c /usr/local/etc/zabbix_proxy.conf -R log_level_decrease="http poller"
+```
+
+##### 进程用户
+
+-   Zabbix proxy 允许使用非 root 用户运行。它将以任何非 root 用户的身份运行。因此，使用非 root 用户运行 proxy 是没有任何问题的.
+
+-   如果你试图以“root”身份运行它，它将会切换到一个已经“写死”的“zabbix”用户，该用户必须存在于您的系统上。如果您只想以“root”用户运行 proxy，您必须在 proxy 配置文件里修改‘AllowRoot‘参数。
+
+是不是感觉和前面的差不多:)
+
+我也觉得。。
+
+##### [配置文件](https://www.zabbix.com/documentation/4.0/manual/appendix/config/zabbix_proxy)
+
+#### Proxy process types
+
+-   configuration syncer - process for managing in-memory cache of configuration data
+-   data sender - proxy data sender
+-   discoverer - process for discovery of devices
+-   heartbeat sender - proxy heartbeat sender
+-   history syncer - history DB writer
+-   housekeeper - process for removal of old historical data
+-   http poller - web monitoring poller
+-   icmp pinger - poller for icmpping checks
+-   ipmi manager - IPMI poller manager
+-   ipmi poller - poller for IPMI checks
+-   java poller - poller for Java checks
+-   poller - normal poller for passive checks
+-   self-monitoring - process for collecting internal server statistics
+-   snmp trapper - trapper for SNMP traps
+-   task manager - process for remote execution of tasks requested by other components (e.g. close problem, acknowledge problem, check item value now, remote command functionality)
+-   trapper - trapper for active checks, traps, proxy communication
+-   unreachable poller - poller for unreachable devices
+-   vmware collector - VMware data collector responsible for data gathering from VMware services
+
+#### 语言环境
+
+-   `UTF-8`
+
+### [Java gateway](https://www.zabbix.com/documentation/4.0/manual/concepts/java)
 

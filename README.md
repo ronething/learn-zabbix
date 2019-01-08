@@ -984,3 +984,32 @@ bytes：保留单个趋势数据所需的字节数，取决于数据库引擎，
 ## [快速入门](https://www.zabbix.com/documentation/4.0/manual/quickstart)
 
 ### [登陆和配置用户](https://www.zabbix.com/documentation/4.0/manual/quickstart/login)
+
+### [添加主机](https://www.zabbix.com/documentation/4.0/manual/quickstart/host)
+
+-   Zabbix中的主机（Host）是一个你想要监控的网络实体（物理的，或者虚拟的）。Zabbix中，对于主机的定义非常灵活。它可以是一台物理服务器，一个网络交换机，一个虚拟机或者一些应用。
+
+-   可以通过配置（Configuration） → 主机（Hosts）菜单，查看已配置的主机信息。
+
+-   从右边的选择框中，选择一个或者多个组。所有访问权限都分配到主机组，而不是单独的主机。这也是主机需要属于至少一个组的原因。
+
+### [新建监控项](https://www.zabbix.com/documentation/4.0/manual/quickstart/item)
+
+-   监控项是Zabbix中获得数据的基础。没有监控项，就没有数据。
+
+### [新建触发器](https://www.zabbix.com/documentation/4.0/manual/quickstart/trigger)
+
+-   监控项只是用于收集数据。如果需要自动评估收到的数据，我们则需要定义触发器。触发器包含了一个表达式，这个表达式定义了数据的可接受的阈值级别。
+
+### [获取问题通知](https://www.zabbix.com/documentation/4.0/manual/quickstart/notification)
+
+-   前往管理（Administration） → 媒体类型（Media types），点击预定义媒体类型列表中的Email，以配置E-mail。
+
+-   新建动作以便通知
+
+### [新建模版](https://www.zabbix.com/documentation/4.0/manual/quickstart/template)
+
+-   模版（templates）功能可以实现这一点。模版允许对有用的监控项、触发器和其他对象进行分组，只需要一步就可以对监控主机应用模版，以达到反复重用的目的。
+
+## [Zabbix appliance](https://www.zabbix.com/documentation/4.0/manual/appliance)
+

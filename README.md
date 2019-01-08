@@ -1013,3 +1013,60 @@ bytes：保留单个趋势数据所需的字节数，取决于数据库引擎，
 
 ## [Zabbix appliance](https://www.zabbix.com/documentation/4.0/manual/appliance)
 
+### 简介
+
+-   除了手动安装或者重新使用现有的服务器来运行Zabbix外，用户可通过[download](https://www.zabbix.com/download_appliance) 下载Zabbix应用或者包含Zabbix应用的光盘镜像。Zabbix server (MySQL), Zabbix server (PostgreSQL), Zabbix proxy (MySQL) 以及Zabbix proxy (SQLite 3) 可使用Zabbix应用光盘，进行即时部署。
+
+-   仓库
+
+    在/etc/apt/sources.list中添加了官方Zabbix 仓库 :
+
+    ```sh
+    ## Zabbix repository
+    deb http://repo.zabbix.com/zabbix/3.4/ubuntu trusty main
+    deb-src http://repo.zabbix.com/zabbix/3.4/ubuntu trusty main
+    ```
+
+-   防火墙
+
+    此应用使用了预定义规则的iptables防火墙:
+
+    -   打开SSH端口(22 TCP);
+    -   打开Zabbix agent (10050 TCP) 和 Zabbix trapper (10051 TCP) 端口;
+    -   打开HTTP (80 TCP) 和 HTTPS (443 TCP) 端口;
+    -   打开SNMP trap 端口 (162 UDP);
+    -   打开NTP端口（123 UDP）的出向（outgoing）连接;
+    -   ICMP pakets限制为每秒5个数据包;
+    -   丢弃所有其他入向（incoming）连接。
+
+## [Configuration](https://www.zabbix.com/documentation/4.0/manual/config)
+
+### Hosts and host groups
+
+-   Typical Zabbix hosts are the devices you wish to monitor (servers, workstations, switches, etc).
+
+#### [Configuring a host](https://www.zabbix.com/documentation/4.0/manual/config/hosts/host)
+
+-   IPMI是智能型平台管理接口（Intelligent Platform Management Interface）的缩写，是管理基于 Intel结构的企业系统中所使用的外围设备采用的一种工业标准，该标准由英特尔、惠普、NEC、美国戴尔电脑和SuperMicro等公司制定。用户可以利用IPMI监视服务器的物理健康特征，如温度、电压、风扇工作状态、电源状态等。而且更为重要的是IPMI是一个开放的免费标准，用户无需为使用该标准而支付额外的费用。
+
+-   嵌套主机组的权限
+
+    -   当将子主机组创建到现有的父主机组时，该子主机组用户组 的权限将从父组级继承, (例如,如果Riga 已经存在，创建 Riga/Zabbix servers)
+
+    -   将父主机组创建到现有的子主机组时，不会设置父级的权限 (例如, 如果Riga/Zabbix servers已经存在，创建Riga)
+
+
+#### [Inventory](https://www.zabbix.com/documentation/4.0/manual/config/hosts/inventory)
+
+##### 概述
+
+-   Zabbix管理页面有一个特殊的Inventory 菜单。 但你一开始不会看到任何数据，这里你也不能输入任何资产相关的信息。资产信息是在配置主机时人工录入建立的资产数据，或者通过使用某些自动填充选项完成的录入。
+
+##### 构建资产库
+
+-   Manual mode
+
+-   Automatic mode
+
+#### [Mass update](https://www.zabbix.com/documentation/4.0/manual/config/hosts/hostupdate)
+
